@@ -1,2 +1,2 @@
-# Example
-An example greeter plugin
+# Vanced Barrows!
+Attempting to replace the Barrows Brothers' face popup with good ol' JD Vance.
