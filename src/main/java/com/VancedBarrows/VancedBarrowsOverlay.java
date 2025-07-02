@@ -10,44 +10,39 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 @Singleton
-public class VancedBarrowsOverlay extends Overlay
-{
+public class VancedBarrowsOverlay extends Overlay {
     private BufferedImage image;
-    private boolean active = false;
-    private boolean shouldShow = false;
+    private boolean visible = false;
+    private Point overlayLocation = new Point(9, 9);
 
     @Inject
-    public VancedBarrowsOverlay()
-    {
+    public VancedBarrowsOverlay() {
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
     }
 
-    public void setImage(BufferedImage image)
-    {
+    public void setImage(BufferedImage image) {
         this.image = image;
     }
 
-    public void setActive(boolean active)
-    {
-        this.active = active;
+    public void setVisible(boolean visible) {
+        this.visible = visible;
     }
 
-    public void setShouldShow(boolean show)
-    {
-        this.shouldShow = show;
+    public void setOverlayLocation(Point location) {
+        this.overlayLocation = location;
     }
 
     @Override
-    public Dimension render(Graphics2D graphics)
-    {
-        if (!active || !shouldShow || image == null)
-        {
+    public Dimension render(Graphics2D graphics) {
+        if (!visible || image == null) {
             return null;
         }
 
-        // Render near where original ghost image is located
-        graphics.drawImage(image, 9, 9, null);
+        graphics.drawImage(image, (int) overlayLocation.getX(), (int) overlayLocation.getY(), null);
         return new Dimension(image.getWidth(), image.getHeight());
+    }
+
+    public void setOverlayLocation(net.runelite.api.Point widgetLocation) {
     }
 }

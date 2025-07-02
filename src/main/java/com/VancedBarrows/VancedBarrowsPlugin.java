@@ -4,6 +4,7 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Point;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
@@ -39,15 +40,22 @@ public class VancedBarrowsPlugin extends Plugin
 
 	private BufferedImage ghostFace;
 	private boolean inBarrows = false;
-	private int lastGhostWidgetSpriteId = -1;
 
 	@Override
 	protected void startUp()
 	{
 		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png");
+		if (ghostFace == null)
+		{
+			log.error("Failed to load vance.png!");
+		}
+		else
+		{
+			log.info("Loaded vance.png successfully.");
+		}
+
 		overlay.setImage(ghostFace);
-		overlay.setActive(false);
-		overlay.setShouldShow(false);
+		overlay.setVisible(false);
 		overlayManager.add(overlay);
 		log.info("Vanced Barrows started");
 	}
@@ -57,9 +65,7 @@ public class VancedBarrowsPlugin extends Plugin
 	{
 		overlayManager.remove(overlay);
 		ghostFace = null;
-		inBarrows = false;
-		overlay.setShouldShow(false);
-		lastGhostWidgetSpriteId = -1;
+		overlay.setVisible(false);
 		log.info("Vanced Barrows stopped");
 	}
 
@@ -85,28 +91,35 @@ public class VancedBarrowsPlugin extends Plugin
 
 		if (!inBarrows)
 		{
-			overlay.setShouldShow(false);
-			lastGhostWidgetSpriteId = -1;
+			overlay.setVisible(false);
 			return;
 		}
 
-		Widget ghostWidget = client.getWidget(24, 1); // Barrows ghost face widget
+		Widget ghostWidget = client.getWidget(24, 1);
 
 		if (ghostWidget != null && ghostWidget.getSpriteId() != -1)
 		{
-			int currentSprite = ghostWidget.getSpriteId();
+			// Hide original popup
+			ghostWidget.setHidden(true);
 
-			if (currentSprite != lastGhostWidgetSpriteId)
+			// Set overlay position based on widget location
+			Point widgetLocation = ghostWidget.getCanvasLocation();
+			if (widgetLocation != null)
 			{
-				ghostWidget.setHidden(true); // Hide original popup
-				overlay.setShouldShow(true); // Show replacement
-				lastGhostWidgetSpriteId = currentSprite;
+				overlay.setOverlayLocation(widgetLocation);
+				overlay.setVisible(true);
+				log.debug("Showing overlay at {}", widgetLocation);
+			}
+			else
+			{
+				// Fallback to visible but no specific position
+				overlay.setVisible(true);
+				log.debug("Showing overlay but widget location null");
 			}
 		}
 		else
 		{
-			overlay.setShouldShow(false);
-			lastGhostWidgetSpriteId = -1;
+			overlay.setVisible(false);
 		}
 	}
 
@@ -118,13 +131,12 @@ public class VancedBarrowsPlugin extends Plugin
 		}
 
 		boolean nowInBarrows = Arrays.stream(client.getMapRegions())
-				.anyMatch(id -> id == BARROWS_REGION);
+				.anyMatch(region -> region == BARROWS_REGION);
 
 		if (nowInBarrows != inBarrows)
 		{
-			inBarrows = nowInBarrows;
-			overlay.setActive(inBarrows);
-			log.debug("Barrows region state changed: {}", inBarrows);
+			log.info("Barrows region state changed: inBarrows={}", nowInBarrows);
 		}
+		inBarrows = nowInBarrows;
 	}
 }
