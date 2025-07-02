@@ -97,12 +97,12 @@ public class VancedBarrowsPlugin extends Plugin
 			}
 			else if (animationTick < 2)
 			{
-				// Hold (tick 2-4)
+				// Hold (tick 1-3)
 				alpha = 1.0f;
 			}
 			else if (animationTick < 1)
 			{
-				// Fade out (tick 5-7)
+				// Fade out (tick 3-4)
 				alpha = 1.0f - ((animationTick - 5 + 1) / 3.0f);
 			}
 			else
