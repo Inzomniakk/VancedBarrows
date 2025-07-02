@@ -1,13 +1,9 @@
 package com.VancedBarrows;
 
-import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.GameState;
 import net.runelite.api.Skill;
-import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -80,7 +76,7 @@ public class VancedBarrowsPlugin extends Plugin
 		if (lastPrayerPoints != -1 && currentPrayer < lastPrayerPoints)
 		{
 			// Trigger image animation
-			overlay.setOverlayLocation(new net.runelite.api.Point(150, 150)); // You can make this dynamic later
+			overlay.setOverlayLocation(new net.runelite.api.Point(150, 150));
 			overlay.setVisible(true);
 			animationTick = 0;
 			log.info("Prayer drained. Triggering image animation.");
