@@ -13,6 +13,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 public class VancedBarrowsOverlay extends Overlay
 {
     private BufferedImage image;
+    private boolean active = false;
 
     @Inject
     public VancedBarrowsOverlay()
@@ -26,15 +27,19 @@ public class VancedBarrowsOverlay extends Overlay
         this.image = image;
     }
 
+    public void setActive(boolean active)
+    {
+        this.active = active;
+    }
+
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (image == null)
+        if (!active || image == null)
         {
             return null;
         }
 
-        // Render at static coordinates (e.g., center-ish of game window)
         graphics.drawImage(image, 260, 140, null);
         return new Dimension(image.getWidth(), image.getHeight());
     }
