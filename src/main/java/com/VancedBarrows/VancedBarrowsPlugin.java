@@ -4,6 +4,7 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.widgets.Widget;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
@@ -38,23 +39,27 @@ public class VancedBarrowsPlugin extends Plugin
 
 	private BufferedImage ghostFace;
 	private boolean inBarrows = false;
+	private int lastGhostWidgetSpriteId = -1;
 
 	@Override
-	protected void startUp() throws Exception
+	protected void startUp()
 	{
 		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png");
 		overlay.setImage(ghostFace);
-		overlay.setActive(false); // Start inactive
+		overlay.setActive(false);
+		overlay.setShouldShow(false);
 		overlayManager.add(overlay);
 		log.info("Vanced Barrows started");
 	}
 
 	@Override
-	protected void shutDown() throws Exception
+	protected void shutDown()
 	{
 		overlayManager.remove(overlay);
 		ghostFace = null;
 		inBarrows = false;
+		overlay.setShouldShow(false);
+		lastGhostWidgetSpriteId = -1;
 		log.info("Vanced Barrows stopped");
 	}
 
@@ -77,6 +82,32 @@ public class VancedBarrowsPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		updateBarrowsState();
+
+		if (!inBarrows)
+		{
+			overlay.setShouldShow(false);
+			lastGhostWidgetSpriteId = -1;
+			return;
+		}
+
+		Widget ghostWidget = client.getWidget(24, 1); // Barrows ghost face widget
+
+		if (ghostWidget != null && ghostWidget.getSpriteId() != -1)
+		{
+			int currentSprite = ghostWidget.getSpriteId();
+
+			if (currentSprite != lastGhostWidgetSpriteId)
+			{
+				ghostWidget.setHidden(true); // Hide original popup
+				overlay.setShouldShow(true); // Show replacement
+				lastGhostWidgetSpriteId = currentSprite;
+			}
+		}
+		else
+		{
+			overlay.setShouldShow(false);
+			lastGhostWidgetSpriteId = -1;
+		}
 	}
 
 	private void updateBarrowsState()
@@ -86,7 +117,9 @@ public class VancedBarrowsPlugin extends Plugin
 			return;
 		}
 
-		boolean nowInBarrows = Arrays.stream(client.getMapRegions()).anyMatch(id -> id == BARROWS_REGION);
+		boolean nowInBarrows = Arrays.stream(client.getMapRegions())
+				.anyMatch(id -> id == BARROWS_REGION);
+
 		if (nowInBarrows != inBarrows)
 		{
 			inBarrows = nowInBarrows;

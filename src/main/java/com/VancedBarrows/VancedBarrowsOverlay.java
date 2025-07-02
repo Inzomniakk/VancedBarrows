@@ -14,6 +14,7 @@ public class VancedBarrowsOverlay extends Overlay
 {
     private BufferedImage image;
     private boolean active = false;
+    private boolean shouldShow = false;
 
     @Inject
     public VancedBarrowsOverlay()
@@ -32,15 +33,21 @@ public class VancedBarrowsOverlay extends Overlay
         this.active = active;
     }
 
+    public void setShouldShow(boolean show)
+    {
+        this.shouldShow = show;
+    }
+
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!active || image == null)
+        if (!active || !shouldShow || image == null)
         {
             return null;
         }
 
-        graphics.drawImage(image, 260, 140, null);
+        // Render near where original ghost image is located
+        graphics.drawImage(image, 9, 9, null);
         return new Dimension(image.getWidth(), image.getHeight());
     }
 }
