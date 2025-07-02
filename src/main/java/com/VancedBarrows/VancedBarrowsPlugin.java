@@ -4,8 +4,7 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.Point;
-import net.runelite.api.widgets.Widget;
+import net.runelite.api.Skill;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
@@ -22,14 +21,15 @@ import java.util.Arrays;
 @Slf4j
 @PluginDescriptor(
 		name = "Vanced Barrows",
-		description = "Replaces the Barrows ghost popup with your own image",
-		tags = {"barrows", "ghost", "face", "overlay"}
+		description = "Shows an image whenever a prayer drain happens in the Barrows tunnels",
+		tags = {"barrows", "prayer", "overlay"}
 )
 public class VancedBarrowsPlugin extends Plugin
 {
 	private static final int BARROWS_REGION = 14231;
+    private static final int ANIMATION_TOTAL_TICKS = 4;
 
-	@Inject
+    @Inject
 	private Client client;
 
 	@Inject
@@ -40,8 +40,10 @@ public class VancedBarrowsPlugin extends Plugin
 
 	private BufferedImage ghostFace;
 	private boolean inBarrows = false;
+	private int lastPrayerPoints = -1;
+    private int animationTick = -1;
 
-	@Override
+    @Override
 	protected void startUp()
 	{
 		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png");
@@ -60,30 +62,6 @@ public class VancedBarrowsPlugin extends Plugin
 		log.info("Vanced Barrows started");
 	}
 
-	@Override
-	protected void shutDown()
-	{
-		overlayManager.remove(overlay);
-		ghostFace = null;
-		overlay.setVisible(false);
-		log.info("Vanced Barrows stopped");
-	}
-
-	@Provides
-	VancedBarrowsConfig provideConfig(ConfigManager configManager)
-	{
-		return configManager.getConfig(VancedBarrowsConfig.class);
-	}
-
-	@Subscribe
-	public void onGameStateChanged(GameStateChanged event)
-	{
-		if (event.getGameState() == GameState.LOGGED_IN)
-		{
-			updateBarrowsState();
-		}
-	}
-
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
@@ -92,41 +70,67 @@ public class VancedBarrowsPlugin extends Plugin
 		if (!inBarrows)
 		{
 			overlay.setVisible(false);
+			lastPrayerPoints = -1;
+			animationTick = -1;
 			return;
 		}
 
-		Widget ghostWidget = client.getWidget(24, 1);
+		int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
 
-		if (ghostWidget != null && ghostWidget.getSpriteId() != -1)
+		if (lastPrayerPoints != -1 && currentPrayer < lastPrayerPoints)
 		{
-			// Hide original popup
-			ghostWidget.setHidden(true);
+			// Trigger image animation
+			overlay.setOverlayLocation(new net.runelite.api.Point(150, 150)); // You can make this dynamic later
+			overlay.setVisible(true);
+			animationTick = 0;
+			log.info("Prayer drained. Triggering image animation.");
+		}
+		else if (animationTick >= 0)
+		{
+			// We're in the middle of the animation
+			float alpha;
 
-			// Set overlay position based on widget location
-			Point widgetLocation = ghostWidget.getCanvasLocation();
-			if (widgetLocation != null)
+			if (animationTick < 1)
 			{
-				overlay.setOverlayLocation(widgetLocation);
-				overlay.setVisible(true);
-				log.debug("Showing overlay at {}", widgetLocation);
+				// Fade in (tick 0-1)
+				alpha = (animationTick + 1) / 2.0f;
+			}
+			else if (animationTick < 2)
+			{
+				// Hold (tick 2-4)
+				alpha = 1.0f;
+			}
+			else if (animationTick < 1)
+			{
+				// Fade out (tick 5-7)
+				alpha = 1.0f - ((animationTick - 5 + 1) / 3.0f);
 			}
 			else
 			{
-				// Fallback to visible but no specific position
-				overlay.setVisible(true);
-				log.debug("Showing overlay but widget location null");
+				// Animation over
+				overlay.setVisible(false);
+				animationTick = -1;
+				return;
 			}
+
+			overlay.setAlpha(alpha);
+			animationTick++;
 		}
 		else
 		{
+			// Not animating
 			overlay.setVisible(false);
 		}
+
+		lastPrayerPoints = currentPrayer;
 	}
+
 
 	private void updateBarrowsState()
 	{
 		if (client.getMapRegions() == null)
 		{
+			inBarrows = false;
 			return;
 		}
 
@@ -137,6 +141,7 @@ public class VancedBarrowsPlugin extends Plugin
 		{
 			log.info("Barrows region state changed: inBarrows={}", nowInBarrows);
 		}
+
 		inBarrows = nowInBarrows;
 	}
 }
