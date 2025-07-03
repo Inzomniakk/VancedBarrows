@@ -14,7 +14,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
@@ -32,7 +31,6 @@ public class VancedBarrowsPlugin extends Plugin
 	private static final int BARROWS_REGION = 14231;
 	private static final int WIDGET_GROUP = 24;
 	private static final int WIDGET_CHILD = 1;
-	private static final int ANIMATION_TOTAL_TICKS = 8;
 
 	@Inject
 	private Client client;
