@@ -24,8 +24,8 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @PluginDescriptor(
 		name = "Vanced Barrows",
-		description = "Displays a custom image when prayer is drained in the Barrows tunnels",
-		tags = {"barrows", "prayer", "overlay"}
+		description = "Displays JD Vance in the Barrows Tunnels!",
+		tags = {"barrows", "prayer", "overlay", "JD", "Vance"}
 )
 public class VancedBarrowsPlugin extends Plugin
 {
@@ -102,15 +102,13 @@ public class VancedBarrowsPlugin extends Plugin
 		}
 
 		int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
-		Widget faceWidget = client.getWidget(24, 1); // Barrows ghost face widget
+		Widget faceWidget = client.getWidget(24, 1); // Barrows faces
 
-		// 🔁 Always update widget visibility based on config
 		if (faceWidget != null)
 		{
 			faceWidget.setHidden(!config.showBarrowsFaces());
 		}
 
-		// ✅ Trigger custom overlay when prayer drops
 		if (lastPrayerPoints != -1 && currentPrayer < lastPrayerPoints)
 		{
 			if (config.showJD())
