@@ -15,6 +15,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
+import java.util.concurrent.ThreadLocalRandom;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
@@ -45,6 +46,20 @@ public class VancedBarrowsPlugin extends Plugin
 	private boolean inBarrows = false;
 	private int lastPrayerPoints = -1;
 	private int animationTick = -1;
+
+	private net.runelite.api.Point getRandomOnScreenLocation(int imageWidth, int imageHeight)
+	{
+		int canvasWidth = client.getCanvasWidth();
+		int canvasHeight = client.getCanvasHeight();
+
+		int maxX = canvasWidth - imageWidth;
+		int maxY = canvasHeight - imageHeight;
+
+		int x = ThreadLocalRandom.current().nextInt(0, Math.max(1, maxX));
+		int y = ThreadLocalRandom.current().nextInt(0, Math.max(1, maxY));
+
+		return new net.runelite.api.Point(x, y);
+	}
 
 	@Override
 	protected void startUp()
@@ -108,7 +123,7 @@ public class VancedBarrowsPlugin extends Plugin
 
 		if (lastPrayerPoints != -1 && currentPrayer < lastPrayerPoints)
 		{
-			// Try to match face widget, not doing anything yet.
+			// Tries to match face widget, not doing anything yet.
 			Widget faceWidget = client.getWidget(WIDGET_GROUP, WIDGET_CHILD);
 			if (faceWidget != null && faceWidget.getCanvasLocation() != null)
 			{
@@ -117,7 +132,8 @@ public class VancedBarrowsPlugin extends Plugin
 				faceWidget.setHidden(true); // Set false to show brothers.
 
 				// Position Vance
-				overlay.setOverlayLocation(new Point(150, 150));
+				net.runelite.api.Point randLoc = getRandomOnScreenLocation(128, 128);
+				overlay.setOverlayLocation(randLoc);
 				overlay.setSize(512, 512);
 				overlay.setVisible(true);
 				animationTick = 0;
