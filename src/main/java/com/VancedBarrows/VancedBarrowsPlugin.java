@@ -116,11 +116,11 @@ public class VancedBarrowsPlugin extends Plugin
 			{
 				Point loc = faceWidget.getCanvasLocation();
 
-				faceWidget.setHidden(false); // Set true to show brothers faces.
+				faceWidget.setHidden(true); // Set false to show brothers.
 
 				// Position Vance
 				overlay.setOverlayLocation(new Point(150, 150));
-				overlay.setSize(384, 384);
+				overlay.setSize(512, 512);
 				overlay.setVisible(true);
 				animationTick = 0;
 				log.warn("Showing Vance.");
@@ -153,7 +153,7 @@ public class VancedBarrowsPlugin extends Plugin
 				return;
 			}
 
-			overlay.setAlpha(alpha * 0.60f);  // Cap alpha at 75% opacity
+			overlay.setAlpha(alpha * 0.50f);  // Cap alpha at 50% opacity
 			animationTick++;
 		}
 		else
