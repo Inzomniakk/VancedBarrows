@@ -24,14 +24,12 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @PluginDescriptor(
 		name = "Vanced Barrows",
-		description = "Displays JD Vance in the Barrows Tunnels!",
+		description = "Replaces the Barrows Brothers' faces popup with images of JD Vance!",
 		tags = {"barrows", "prayer", "overlay", "JD", "Vance"}
 )
 public class VancedBarrowsPlugin extends Plugin
 {
 	private static final int BARROWS_REGION = 14231;
-	private static final int WIDGET_GROUP = 24;
-	private static final int WIDGET_CHILD = 1;
 
 	@Inject private Client client;
 	@Inject private VancedBarrowsOverlay overlay;
