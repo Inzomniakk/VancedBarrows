@@ -64,7 +64,7 @@ public class VancedBarrowsPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png"); //vance and vanceOld
+		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png"); //vance and vanceTwo
 		if (ghostFace == null)
 		{
 			log.error("Failed to load vance.png!");
