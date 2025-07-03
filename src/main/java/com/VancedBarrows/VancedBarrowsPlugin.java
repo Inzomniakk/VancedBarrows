@@ -4,9 +4,9 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Point;
 import net.runelite.api.Skill;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.Point;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
@@ -15,11 +15,11 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
-import java.util.concurrent.ThreadLocalRandom;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @PluginDescriptor(
@@ -33,38 +33,26 @@ public class VancedBarrowsPlugin extends Plugin
 	private static final int WIDGET_GROUP = 24;
 	private static final int WIDGET_CHILD = 1;
 
-	@Inject
-	private Client client;
-
-	@Inject
-	private VancedBarrowsOverlay overlay;
-
-	@Inject
-	private OverlayManager overlayManager;
+	@Inject private Client client;
+	@Inject private VancedBarrowsOverlay overlay;
+	@Inject private OverlayManager overlayManager;
+	@Inject private VancedBarrowsConfig config;
 
 	private BufferedImage ghostFace;
 	private boolean inBarrows = false;
 	private int lastPrayerPoints = -1;
 	private int animationTick = -1;
 
-	private net.runelite.api.Point getRandomOnScreenLocation(int imageWidth, int imageHeight)
+	@Provides
+	VancedBarrowsConfig provideConfig(ConfigManager configManager)
 	{
-		int canvasWidth = client.getCanvasWidth();
-		int canvasHeight = client.getCanvasHeight();
-
-		int maxX = canvasWidth - imageWidth;
-		int maxY = canvasHeight - imageHeight;
-
-		int x = ThreadLocalRandom.current().nextInt(0, Math.max(1, maxX));
-		int y = ThreadLocalRandom.current().nextInt(0, Math.max(1, maxY));
-
-		return new net.runelite.api.Point(x, y);
+		return configManager.getConfig(VancedBarrowsConfig.class);
 	}
 
 	@Override
 	protected void startUp()
 	{
-		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png"); //vance and vanceTwo
+		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png");
 		if (ghostFace == null)
 		{
 			log.error("Failed to load vance.png!");
@@ -91,12 +79,6 @@ public class VancedBarrowsPlugin extends Plugin
 		log.info("Vanced Barrows stopped");
 	}
 
-	@Provides
-	VancedBarrowsConfig provideConfig(ConfigManager configManager)
-	{
-		return configManager.getConfig(VancedBarrowsConfig.class);
-	}
-
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
@@ -120,64 +102,75 @@ public class VancedBarrowsPlugin extends Plugin
 		}
 
 		int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
+		Widget faceWidget = client.getWidget(24, 1); // Barrows ghost face widget
 
+		// 🔁 Always update widget visibility based on config
+		if (faceWidget != null)
+		{
+			faceWidget.setHidden(!config.showBarrowsFaces());
+		}
+
+		// ✅ Trigger custom overlay when prayer drops
 		if (lastPrayerPoints != -1 && currentPrayer < lastPrayerPoints)
 		{
-			// Tries to match face widget, not doing anything yet.
-			Widget faceWidget = client.getWidget(WIDGET_GROUP, WIDGET_CHILD);
-			if (faceWidget != null && faceWidget.getCanvasLocation() != null)
+			if (config.showJD())
 			{
-				Point loc = faceWidget.getCanvasLocation();
+				if (faceWidget != null && faceWidget.getCanvasLocation() != null)
+				{
+					Point loc = faceWidget.getCanvasLocation();
+					int scaledWidth = (int)(faceWidget.getWidth() * 0.5);
+					int scaledHeight = (int)(faceWidget.getHeight() * 0.5);
+					int offsetX = loc.getX() + (faceWidget.getWidth() - scaledWidth) / 2;
+					int offsetY = loc.getY() + (faceWidget.getHeight() - scaledHeight) / 2;
 
-				faceWidget.setHidden(true); // Set false to show brothers.
+					overlay.setOverlayLocation(new Point(offsetX, offsetY));
+					overlay.setSize(scaledWidth, scaledHeight);
+				}
+				else
+				{
+					Point randLoc = getRandomOnScreenLocation(128, 128);
+					overlay.setOverlayLocation(randLoc);
+					overlay.setSize(128, 128);
+				}
 
-				// Position Vance
-				net.runelite.api.Point randLoc = getRandomOnScreenLocation(128, 128);
-				overlay.setOverlayLocation(randLoc);
-				overlay.setSize(512, 512);
+				overlay.setAlpha(0.0f);
 				overlay.setVisible(true);
 				animationTick = 0;
-				log.warn("Showing Vance.");
 			}
 		}
-		else if (animationTick >= 0)
+		else if (animationTick >= 0 && config.showJD())
 		{
-			// Handle animation phases
 			float alpha;
 			if (animationTick < 2)
 			{
-				// Fade in
 				alpha = (animationTick + 1) / 2.0f;
 			}
 			else if (animationTick < 5)
 			{
-				// Hold
 				alpha = 1.0f;
 			}
 			else if (animationTick < 8)
 			{
-				// Fade out
-				alpha = 1.0f - ((animationTick - 5 + 1) / 3.0f);
+				alpha = 1.0f - ((animationTick - 4) / 3.0f);
 			}
 			else
 			{
-				// Done
 				overlay.setVisible(false);
 				animationTick = -1;
 				return;
 			}
 
-			overlay.setAlpha(alpha * 0.50f);  // Cap alpha at 50% opacity
+			overlay.setAlpha(alpha * 0.75f);
 			animationTick++;
 		}
 		else
 		{
-			// No animation active
 			overlay.setVisible(false);
 		}
 
 		lastPrayerPoints = currentPrayer;
 	}
+
 
 	private void updateBarrowsState()
 	{
@@ -196,5 +189,19 @@ public class VancedBarrowsPlugin extends Plugin
 		}
 
 		inBarrows = nowInBarrows;
+	}
+
+	private Point getRandomOnScreenLocation(int imageWidth, int imageHeight)
+	{
+		int canvasWidth = client.getCanvasWidth();
+		int canvasHeight = client.getCanvasHeight();
+
+		int maxX = canvasWidth - imageWidth;
+		int maxY = canvasHeight - imageHeight;
+
+		int x = ThreadLocalRandom.current().nextInt(0, Math.max(1, maxX));
+		int y = ThreadLocalRandom.current().nextInt(0, Math.max(1, maxY));
+
+		return new Point(x, y);
 	}
 }
