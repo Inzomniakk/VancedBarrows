@@ -16,7 +16,9 @@ public class VancedBarrowsOverlay extends Overlay
     private BufferedImage image;
     private boolean visible = false;
     private java.awt.Point overlayLocation = new java.awt.Point(150, 150);
-    private float alpha = 1.0f; // Opacity
+    private float alpha = 1.0f;
+    private int width = 128;
+    private int height = 128;
 
     @Inject
     public VancedBarrowsOverlay()
@@ -40,6 +42,12 @@ public class VancedBarrowsOverlay extends Overlay
         this.alpha = Math.max(0f, Math.min(1f, alpha));
     }
 
+    public void setSize(int width, int height)
+    {
+        this.width = width;
+        this.height = height;
+    }
+
     public void setOverlayLocation(Point widgetLocation)
     {
         if (widgetLocation != null)
@@ -58,9 +66,9 @@ public class VancedBarrowsOverlay extends Overlay
 
         Composite original = graphics.getComposite();
         graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
-        graphics.drawImage(image, overlayLocation.x, overlayLocation.y, null);
+        graphics.drawImage(image, overlayLocation.x, overlayLocation.y, width, height, null);
         graphics.setComposite(original);
 
-        return new Dimension(image.getWidth(), image.getHeight());
+        return new Dimension(width, height);
     }
 }

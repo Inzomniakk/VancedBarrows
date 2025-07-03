@@ -1,13 +1,20 @@
 package com.VancedBarrows;
 
+import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.Skill;
+import net.runelite.api.widgets.Widget;
+import net.runelite.api.Point;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
@@ -17,15 +24,17 @@ import java.util.Arrays;
 @Slf4j
 @PluginDescriptor(
 		name = "Vanced Barrows",
-		description = "Shows an image whenever a prayer drain happens in the Barrows tunnels",
+		description = "Displays a custom image when prayer is drained in the Barrows tunnels",
 		tags = {"barrows", "prayer", "overlay"}
 )
 public class VancedBarrowsPlugin extends Plugin
 {
 	private static final int BARROWS_REGION = 14231;
-    private static final int ANIMATION_TOTAL_TICKS = 4;
+	private static final int WIDGET_GROUP = 24;
+	private static final int WIDGET_CHILD = 1;
+	private static final int ANIMATION_TOTAL_TICKS = 8;
 
-    @Inject
+	@Inject
 	private Client client;
 
 	@Inject
@@ -37,12 +46,12 @@ public class VancedBarrowsPlugin extends Plugin
 	private BufferedImage ghostFace;
 	private boolean inBarrows = false;
 	private int lastPrayerPoints = -1;
-    private int animationTick = -1;
+	private int animationTick = -1;
 
-    @Override
+	@Override
 	protected void startUp()
 	{
-		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png");
+		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png"); //vance and vanceOld
 		if (ghostFace == null)
 		{
 			log.error("Failed to load vance.png!");
@@ -56,6 +65,32 @@ public class VancedBarrowsPlugin extends Plugin
 		overlay.setVisible(false);
 		overlayManager.add(overlay);
 		log.info("Vanced Barrows started");
+	}
+
+	@Override
+	protected void shutDown()
+	{
+		overlayManager.remove(overlay);
+		overlay.setVisible(false);
+		ghostFace = null;
+		lastPrayerPoints = -1;
+		animationTick = -1;
+		log.info("Vanced Barrows stopped");
+	}
+
+	@Provides
+	VancedBarrowsConfig provideConfig(ConfigManager configManager)
+	{
+		return configManager.getConfig(VancedBarrowsConfig.class);
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.LOGGED_IN)
+		{
+			updateBarrowsState();
+		}
 	}
 
 	@Subscribe
@@ -75,52 +110,60 @@ public class VancedBarrowsPlugin extends Plugin
 
 		if (lastPrayerPoints != -1 && currentPrayer < lastPrayerPoints)
 		{
-			// Trigger image animation
-			overlay.setOverlayLocation(new net.runelite.api.Point(150, 150));
-			overlay.setVisible(true);
-			animationTick = 0;
-			log.info("Prayer drained. Triggering image animation.");
+			// Try to match face widget, not doing anything yet.
+			Widget faceWidget = client.getWidget(WIDGET_GROUP, WIDGET_CHILD);
+			if (faceWidget != null && faceWidget.getCanvasLocation() != null)
+			{
+				Point loc = faceWidget.getCanvasLocation();
+
+				faceWidget.setHidden(false); // Set true to show brothers faces.
+
+				// Position Vance
+				overlay.setOverlayLocation(new Point(150, 150));
+				overlay.setSize(384, 384);
+				overlay.setVisible(true);
+				animationTick = 0;
+				log.warn("Showing Vance.");
+			}
 		}
 		else if (animationTick >= 0)
 		{
-			// We're in the middle of the animation
+			// Handle animation phases
 			float alpha;
-
-			if (animationTick < 1)
+			if (animationTick < 2)
 			{
-				// Fade in (tick 0-1)
+				// Fade in
 				alpha = (animationTick + 1) / 2.0f;
 			}
-			else if (animationTick < 2)
+			else if (animationTick < 5)
 			{
-				// Hold (tick 1-3)
+				// Hold
 				alpha = 1.0f;
 			}
-			else if (animationTick < 1)
+			else if (animationTick < 8)
 			{
-				// Fade out (tick 3-4)
+				// Fade out
 				alpha = 1.0f - ((animationTick - 5 + 1) / 3.0f);
 			}
 			else
 			{
-				// Animation over
+				// Done
 				overlay.setVisible(false);
 				animationTick = -1;
 				return;
 			}
 
-			overlay.setAlpha(alpha);
+			overlay.setAlpha(alpha * 0.60f);  // Cap alpha at 75% opacity
 			animationTick++;
 		}
 		else
 		{
-			// Not animating
+			// No animation active
 			overlay.setVisible(false);
 		}
 
 		lastPrayerPoints = currentPrayer;
 	}
-
 
 	private void updateBarrowsState()
 	{
