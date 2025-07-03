@@ -57,13 +57,13 @@ public class VancedBarrowsPlugin extends Plugin
 		}
 		else
 		{
-			log.info("Loaded vance.png successfully.");
+			log.debug("Loaded vance.png successfully.");
 		}
 
 		overlay.setImage(ghostFace);
 		overlay.setVisible(false);
 		overlayManager.add(overlay);
-		log.info("Vanced Barrows started");
+		log.debug("Vanced Barrows started");
 	}
 
 	@Override
@@ -74,7 +74,7 @@ public class VancedBarrowsPlugin extends Plugin
 		ghostFace = null;
 		lastPrayerPoints = -1;
 		animationTick = -1;
-		log.info("Vanced Barrows stopped");
+		log.debug("Vanced Barrows stopped");
 	}
 
 	@Subscribe
@@ -181,7 +181,7 @@ public class VancedBarrowsPlugin extends Plugin
 
 		if (nowInBarrows != inBarrows)
 		{
-			log.info("Barrows region state changed: inBarrows={}", nowInBarrows);
+			log.debug("Barrows region state changed: inBarrows={}", nowInBarrows);
 		}
 
 		inBarrows = nowInBarrows;
