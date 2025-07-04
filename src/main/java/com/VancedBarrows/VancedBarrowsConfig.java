@@ -15,7 +15,7 @@ public interface VancedBarrowsConfig extends Config
     )
     default boolean showBarrowsFaces()
     {
-        return true;
+        return false;
     }
 
     @ConfigItem(
