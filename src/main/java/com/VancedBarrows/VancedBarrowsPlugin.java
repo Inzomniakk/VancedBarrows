@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Point;
-import net.runelite.api.Skill;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
@@ -24,8 +23,8 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @PluginDescriptor(
 		name = "Vanced Barrows",
-		description = "Replaces the Barrows Brothers' faces popup with images of JD Vance!",
-		tags = {"barrows", "prayer", "overlay", "JD", "Vance"}
+		description = "Replaces the Barrows Brothers' faces popup with images of JD Vance every 18 seconds!",
+		tags = {"barrows", "overlay", "JD", "Vance"}
 )
 public class VancedBarrowsPlugin extends Plugin
 {
@@ -38,8 +37,8 @@ public class VancedBarrowsPlugin extends Plugin
 
 	private BufferedImage ghostFace;
 	private boolean inBarrows = false;
-	private int lastPrayerPoints = -1;
 	private int animationTick = -1;
+	private int tickCounter = 0;
 
 	@Provides
 	VancedBarrowsConfig provideConfig(ConfigManager configManager)
@@ -72,8 +71,8 @@ public class VancedBarrowsPlugin extends Plugin
 		overlayManager.remove(overlay);
 		overlay.setVisible(false);
 		ghostFace = null;
-		lastPrayerPoints = -1;
 		animationTick = -1;
+		tickCounter = 0;
 		log.debug("Vanced Barrows stopped");
 	}
 
@@ -91,48 +90,43 @@ public class VancedBarrowsPlugin extends Plugin
 	{
 		updateBarrowsState();
 
-		if (!inBarrows)
-		{
-			overlay.setVisible(false);
-			lastPrayerPoints = -1;
-			animationTick = -1;
-			return;
-		}
-
-		int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
-		Widget faceWidget = client.getWidget(24, 1); // Barrows faces
-
+		Widget faceWidget = client.getWidget(24, 1); // Barrows faces widget
 		if (faceWidget != null)
 		{
 			faceWidget.setHidden(!config.showBarrowsFaces());
 		}
 
-		if (lastPrayerPoints != -1 && currentPrayer < lastPrayerPoints)
+		if (!inBarrows)
 		{
-			if (config.showJD())
-			{
-				Point randLoc = getRandomOnScreenLocation(128, 128);
-				overlay.setOverlayLocation(randLoc);
-				overlay.setSize(512, 512);
-
-				overlay.setAlpha(0.0f);
-				overlay.setVisible(true);
-				animationTick = 0;
-			}
+			overlay.setVisible(false);
+			animationTick = -1;
+			tickCounter = 0;
+			return;
 		}
 
-		else if (animationTick >= 0 && config.showJD())
+		tickCounter++;
+
+		if (tickCounter >= 30 && config.showJD()) // Every 18 seconds (30 ticks)
+		{
+			tickCounter = 0;
+
+			Point randLoc = getRandomOnScreenLocation(128, 128);
+			overlay.setOverlayLocation(randLoc);
+			overlay.setSize(512, 512);
+			overlay.setAlpha(0.0f);
+			overlay.setVisible(true);
+			animationTick = 0;
+		}
+
+		if (animationTick >= 0 && config.showJD())
 		{
 			float alpha;
-
 			switch (animationTick)
 			{
 				case 0:
 					alpha = 0.325f;
 					break;
 				case 1:
-					alpha = 0.65f;
-					break;
 				case 2:
 					alpha = 0.65f;
 					break;
@@ -150,15 +144,11 @@ public class VancedBarrowsPlugin extends Plugin
 			overlay.setAlpha(alpha);
 			animationTick++;
 		}
-
 		else
 		{
 			overlay.setVisible(false);
 		}
-
-		lastPrayerPoints = currentPrayer;
 	}
-
 
 	private void updateBarrowsState()
 	{
