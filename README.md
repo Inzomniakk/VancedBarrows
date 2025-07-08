@@ -3,4 +3,5 @@ Replaces the Barrows Brothers' face popup with JD Vance.
 
 That is it.
 
-I plan to add more faces, get it working without prayer points, scale the image(s) better, fix the color, etc. I just wanted to get a working version out!
+If anyone would like to add to the image rotation, hit me up.
+Gotta use the image from the plugin as a base and give me permisson to use it, basically. 
