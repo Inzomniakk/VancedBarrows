@@ -17,7 +17,9 @@ import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -29,13 +31,15 @@ import java.util.concurrent.ThreadLocalRandom;
 public class VancedBarrowsPlugin extends Plugin
 {
 	private static final int BARROWS_REGION = 14231;
+	private static final String[] VANCE_IMAGE_PATHS = {"/vance.png", "/vanceTwo.png", "/vanceThree.png"};
 
 	@Inject private Client client;
 	@Inject private VancedBarrowsOverlay overlay;
 	@Inject private OverlayManager overlayManager;
 	@Inject private VancedBarrowsConfig config;
 
-	private BufferedImage ghostFace;
+	private final List<BufferedImage> vanceFaces = new ArrayList<>();
+	private int currentFaceIndex = 0;
 	private boolean inBarrows = false;
 	private int animationTick = -1;
 	private int tickCounter = 0;
@@ -49,17 +53,26 @@ public class VancedBarrowsPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		ghostFace = ImageUtil.loadImageResource(getClass(), "/vance.png");
-		if (ghostFace == null)
+		vanceFaces.clear();
+		for (String path : VANCE_IMAGE_PATHS)
 		{
-			log.error("Failed to load vance.png!");
-		}
-		else
-		{
-			log.debug("Loaded vance.png successfully.");
+			final BufferedImage image = ImageUtil.loadImageResource(getClass(), path);
+			if (image != null)
+			{
+				vanceFaces.add(image);
+				log.debug("Loaded {} successfully.", path);
+			}
+			else
+			{
+				log.error("Failed to load image: {}", path);
+			}
 		}
 
-		overlay.setImage(ghostFace);
+		if (vanceFaces.isEmpty())
+		{
+			log.error("No Vance images were loaded. The plugin will not display images.");
+		}
+
 		overlay.setVisible(false);
 		overlayManager.add(overlay);
 		log.debug("Vanced Barrows started");
@@ -70,7 +83,8 @@ public class VancedBarrowsPlugin extends Plugin
 	{
 		overlayManager.remove(overlay);
 		overlay.setVisible(false);
-		ghostFace = null;
+		vanceFaces.clear();
+		currentFaceIndex = 0;
 		animationTick = -1;
 		tickCounter = 0;
 		log.debug("Vanced Barrows stopped");
@@ -108,7 +122,15 @@ public class VancedBarrowsPlugin extends Plugin
 
 		if (tickCounter >= 30 && config.showJD()) // Every 18 seconds (30 ticks)
 		{
+			if (vanceFaces.isEmpty())
+			{
+				return;
+			}
+
 			tickCounter = 0;
+
+			overlay.setImage(vanceFaces.get(currentFaceIndex));
+			currentFaceIndex = (currentFaceIndex + 1) % vanceFaces.size();
 
 			Point randLoc = getRandomOnScreenLocation(128, 128);
 			overlay.setOverlayLocation(randLoc);
