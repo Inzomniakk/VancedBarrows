@@ -112,7 +112,7 @@ public class VancedBarrowsPlugin extends Plugin
 
 			Point randLoc = getRandomOnScreenLocation(128, 128);
 			overlay.setOverlayLocation(randLoc);
-			overlay.setSize(512, 512);
+			overlay.setSize(256, 256);
 			overlay.setAlpha(0.0f);
 			overlay.setVisible(true);
 			animationTick = 0;
