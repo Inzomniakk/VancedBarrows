@@ -3,29 +3,38 @@ package com.VancedBarrows;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.RuneLite;
+import java.io.File;
 
 @ConfigGroup("vancedbarrows")
 public interface VancedBarrowsConfig extends Config
 {
-    @ConfigItem(
-            keyName = "showBarrowsFaces",
-            name = "Show Barrows Faces",
-            description = "Whether to show the default brothers' face popup in Barrows tunnels",
-            position = 1
-    )
-    default boolean showBarrowsFaces()
+    enum FaceMode
     {
-        return false;
+        BARROWS_FACES,
+        JD_VANCE_FACES,
+        CUSTOM_FACES
     }
 
     @ConfigItem(
-            keyName = "showJD",
-            name = "Show JD Vance",
-            description = "Whether to show JD Vance.",
+            keyName = "faceMode",
+            name = "Face Mode",
+            description = "Select which faces to show.",
+            position = 1
+    )
+    default FaceMode faceMode()
+    {
+        return FaceMode.JD_VANCE_FACES;
+    }
+
+    @ConfigItem(
+            keyName = "customFacesInfo",
+            name = "Custom Faces Folder Path",
+            description = "For 'Custom Faces' mode, place your images in this folder. You can copy this path.",
             position = 2
     )
-    default boolean showJD()
+    default String customFacesInfo()
     {
-        return true;
+        return new File(RuneLite.RUNELITE_DIR, "barrowsfaces").getAbsolutePath();
     }
 }

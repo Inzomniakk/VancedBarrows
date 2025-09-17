@@ -8,15 +8,20 @@ import net.runelite.api.Point;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 
+import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -43,7 +48,7 @@ public class VancedBarrowsPlugin extends Plugin
 	@Inject private OverlayManager overlayManager;
 	@Inject private VancedBarrowsConfig config;
 
-	private final List<BufferedImage> vanceFaces = new ArrayList<>();
+	private final List<BufferedImage> faceImages = new ArrayList<>();
 	private int currentFaceIndex = 0;
 	private boolean inBarrows = false;
 	private int animationTick = -1;
@@ -58,13 +63,47 @@ public class VancedBarrowsPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		vanceFaces.clear();
+		overlayManager.add(overlay);
+		reloadImages();
+		log.debug("Vanced Barrows started");
+	}
+
+	private void reloadImages()
+	{
+		// Reset state
+		faceImages.clear();
+		currentFaceIndex = 0;
+		animationTick = -1;
+		overlay.setVisible(false);
+
+		switch (config.faceMode())
+		{
+			case JD_VANCE_FACES:
+				loadDefaultImages();
+				break;
+			case CUSTOM_FACES:
+				loadCustomImages();
+				break;
+			case BARROWS_FACES:
+				// No images to load for the overlay
+				break;
+		}
+
+		if (faceImages.isEmpty() && config.faceMode() != VancedBarrowsConfig.FaceMode.BARROWS_FACES)
+		{
+			log.warn("No images were loaded for the selected face mode. The plugin will not display images.");
+		}
+	}
+
+	private void loadDefaultImages()
+	{
+		log.debug("Loading default JD Vance images.");
 		for (String path : VANCE_IMAGE_PATHS)
 		{
 			final BufferedImage image = ImageUtil.loadImageResource(getClass(), path);
 			if (image != null)
 			{
-				vanceFaces.add(image);
+				faceImages.add(image);
 				log.debug("Loaded {} successfully.", path);
 			}
 			else
@@ -72,15 +111,41 @@ public class VancedBarrowsPlugin extends Plugin
 				log.error("Failed to load image: {}", path);
 			}
 		}
+	}
 
-		if (vanceFaces.isEmpty())
+	private void loadCustomImages()
+	{
+		log.debug("Attempting to load custom images.");
+		final File imageDir = new File(RuneLite.RUNELITE_DIR, "barrowsfaces");
+
+		if (imageDir.exists() && imageDir.isDirectory())
 		{
-			log.error("No Vance images were loaded. The plugin will not display images.");
-		}
+			File[] imageFiles = imageDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png") || name.toLowerCase().endsWith(".jpg"));
 
-		overlay.setVisible(false);
-		overlayManager.add(overlay);
-		log.debug("Vanced Barrows started");
+			if (imageFiles != null)
+			{
+				for (File imageFile : imageFiles)
+				{
+					try
+					{
+						BufferedImage image = ImageIO.read(imageFile);
+						if (image != null)
+						{
+							faceImages.add(image);
+							log.debug("Loaded custom image {} successfully.", imageFile.getName());
+						}
+					}
+					catch (IOException e)
+					{
+						log.error("Failed to load custom image: {}", imageFile.getName(), e);
+					}
+				}
+			}
+		}
+		else
+		{
+			log.warn("Custom images directory not found: {}", imageDir.getAbsolutePath());
+		}
 	}
 
 	@Override
@@ -88,11 +153,31 @@ public class VancedBarrowsPlugin extends Plugin
 	{
 		overlayManager.remove(overlay);
 		overlay.setVisible(false);
-		vanceFaces.clear();
+		faceImages.clear();
 		currentFaceIndex = 0;
 		animationTick = -1;
 		tickCounter = 0;
+
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			Widget faceWidget = client.getWidget(24, 1);
+			if (faceWidget != null)
+			{
+				faceWidget.setHidden(false);
+			}
+		}
+
 		log.debug("Vanced Barrows stopped");
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (event.getGroup().equals("vancedbarrows"))
+		{
+			log.debug("Vanced Barrows config changed, reloading images.");
+			reloadImages();
+		}
 	}
 
 	@Subscribe
@@ -112,14 +197,13 @@ public class VancedBarrowsPlugin extends Plugin
 		Widget faceWidget = client.getWidget(24, 1); // Barrows faces widget
 		if (faceWidget != null)
 		{
-			faceWidget.setHidden(!config.showBarrowsFaces());
+			faceWidget.setHidden(config.faceMode() != VancedBarrowsConfig.FaceMode.BARROWS_FACES);
 		}
 
-		if (!inBarrows)
+		if (!inBarrows || config.faceMode() == VancedBarrowsConfig.FaceMode.BARROWS_FACES)
 		{
 			overlay.setVisible(false);
 			animationTick = -1;
-			tickCounter = 0;
 			return;
 		}
 
@@ -127,17 +211,18 @@ public class VancedBarrowsPlugin extends Plugin
 
 		final boolean isFixedMode = !client.isResized();
 
-		if (tickCounter >= 30 && config.showJD()) // Every 18 seconds (30 ticks)
+		if (tickCounter >= 30) // Every 18 seconds (30 ticks)
 		{
-			if (vanceFaces.isEmpty())
+			if (faceImages.isEmpty())
 			{
+				overlay.setVisible(false);
 				return;
 			}
 
 			tickCounter = 0;
 
-			overlay.setImage(vanceFaces.get(currentFaceIndex));
-			currentFaceIndex = (currentFaceIndex + 1) % vanceFaces.size();
+			overlay.setImage(faceImages.get(currentFaceIndex));
+			currentFaceIndex = (currentFaceIndex + 1) % faceImages.size();
 
 			final int imageSize = isFixedMode ? IMAGE_SIZE_FIXED : IMAGE_SIZE_RESIZABLE;
 
@@ -149,7 +234,7 @@ public class VancedBarrowsPlugin extends Plugin
 			animationTick = 0;
 		}
 
-		if (animationTick >= 0 && config.showJD())
+		if (animationTick >= 0)
 		{
 			float alpha;
 			switch (animationTick)
