@@ -15,14 +15,16 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.util.ImageUtil;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import javax.inject.Inject;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -48,7 +50,7 @@ public class VancedBarrowsPlugin extends Plugin
 	@Inject private OverlayManager overlayManager;
 	@Inject private VancedBarrowsConfig config;
 
-	private final List<BufferedImage> faceImages = new ArrayList<>();
+	private final List<ImageReader> faceImages = new ArrayList<>();
 	private int currentFaceIndex = 0;
 	private boolean inBarrows = false;
 	private int animationTick = -1;
@@ -100,14 +102,23 @@ public class VancedBarrowsPlugin extends Plugin
 		log.debug("Loading default JD Vance images.");
 		for (String path : VANCE_IMAGE_PATHS)
 		{
-			final BufferedImage image = ImageUtil.loadImageResource(getClass(), path);
-			if (image != null)
-			{
-				faceImages.add(image);
-				log.debug("Loaded {} successfully.", path);
-			}
-			else
-			{
+			try {
+				final InputStream stream = getClass().getResourceAsStream(path);
+				final ImageInputStream imageStream = ImageIO.createImageInputStream(stream);
+
+				final ImageReader reader = ImageIO.getImageReaders(imageStream).next();
+				reader.setInput(imageStream);
+
+				if (reader != null)
+				{
+					faceImages.add(reader);
+					log.debug("Loaded {} successfully.", path);
+				}
+				else
+				{
+					log.error("Failed to load image: {}", path);
+				}
+			} catch (Exception e) {
 				log.error("Failed to load image: {}", path);
 			}
 		}
@@ -120,7 +131,7 @@ public class VancedBarrowsPlugin extends Plugin
 
 		if (imageDir.exists() && imageDir.isDirectory())
 		{
-			File[] imageFiles = imageDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png") || name.toLowerCase().endsWith(".jpg"));
+			File[] imageFiles = imageDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png") || name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".gif"));
 
 			if (imageFiles != null)
 			{
@@ -128,10 +139,13 @@ public class VancedBarrowsPlugin extends Plugin
 				{
 					try
 					{
-						BufferedImage image = ImageIO.read(imageFile);
-						if (image != null)
+                        final ImageInputStream imageStream = ImageIO.createImageInputStream(imageFile);
+                        final ImageReader reader = ImageIO.getImageReaders(imageStream).next();
+						reader.setInput(imageStream);
+
+						if (reader != null)
 						{
-							faceImages.add(image);
+							faceImages.add(reader);
 							log.debug("Loaded custom image {} successfully.", imageFile.getName());
 						}
 					}
@@ -221,7 +235,8 @@ public class VancedBarrowsPlugin extends Plugin
 
 			tickCounter = 0;
 
-			overlay.setImage(faceImages.get(currentFaceIndex));
+			overlay.setReader(faceImages.get(currentFaceIndex));
+
 			currentFaceIndex = (currentFaceIndex + 1) % faceImages.size();
 
 			final int imageSize = isFixedMode ? IMAGE_SIZE_FIXED : IMAGE_SIZE_RESIZABLE;
@@ -277,7 +292,7 @@ public class VancedBarrowsPlugin extends Plugin
 		final int plane = client.getLocalPlayer().getWorldLocation().getPlane();
 		final boolean inInstancedRegion = client.isInInstancedRegion();
 		final int regionID = client.getLocalPlayer().getWorldLocation().getRegionID();
-        
+
 		boolean nowInBarrows = regionID == 14231 && (plane == 3 || (plane == 0 && inInstancedRegion));
 
 		if (nowInBarrows != inBarrows)
