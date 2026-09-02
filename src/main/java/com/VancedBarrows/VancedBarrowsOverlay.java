@@ -1,10 +1,12 @@
 package com.VancedBarrows;
 
+import javax.imageio.ImageReader;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
+import lombok.Setter;
 import net.runelite.api.Point;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -13,7 +15,11 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 @Singleton
 public class VancedBarrowsOverlay extends Overlay
 {
-    private BufferedImage image;
+    @Setter
+    private ImageReader reader;
+    private long startTime = 0;
+
+    @Setter
     private boolean visible = false;
     private java.awt.Point overlayLocation = new java.awt.Point(150, 150);
     private float alpha = 1.0f;
@@ -25,16 +31,6 @@ public class VancedBarrowsOverlay extends Overlay
     {
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
-    }
-
-    public void setImage(BufferedImage image)
-    {
-        this.image = image;
-    }
-
-    public void setVisible(boolean visible)
-    {
-        this.visible = visible;
     }
 
     public void setAlpha(float alpha)
@@ -59,15 +55,30 @@ public class VancedBarrowsOverlay extends Overlay
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!visible || image == null || overlayLocation == null)
+        if (!visible || reader == null || overlayLocation == null)
         {
+            startTime = System.nanoTime();
             return null;
         }
 
-        Composite original = graphics.getComposite();
-        graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
-        graphics.drawImage(image, overlayLocation.x, overlayLocation.y, width, height, null);
-        graphics.setComposite(original);
+        try
+        {
+            int numFrames = reader.getNumImages(true);
+
+            // spread it out over 3s
+            long elapsedMs = (System.nanoTime() - startTime) / 1_000_000;
+            int idx = (int)((elapsedMs % 3000L) / 3000.0 * numFrames);
+
+            BufferedImage image = reader.read(idx);
+            Composite original = graphics.getComposite();
+            graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+            graphics.drawImage(image, overlayLocation.x, overlayLocation.y, width, height, null);
+            graphics.setComposite(original);
+        }
+        catch (java.io.IOException e)
+        {
+            throw new RuntimeException(e);
+        }
 
         return new Dimension(width, height);
     }
